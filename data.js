@@ -1,50 +1,68 @@
 
+/**
+ * Module dependencies
+ */
+
 var natural = require('natural')
-var prop = require('./prop.json')
+var db = require('./prop.json')
 var first = require('./first.json')
 var last = require('./last.json')
 
-var res = []
+/**
+ * Constants
+ */
 
-prop.forEach(function(p){
+var THRESHOLD = 0.87
+
+var weightedData = db.map(function(p){
   
-  var bestProb = [0,0]
+  var bestProb = 0
   var match = -1
-
   var name = p.can_nam.split(',')
-  if(name.length < 2) return
-  for (var i = 0; i < first.length; i++) {
-    match = natural.JaroWinklerDistance(name[1], first[i].name)
-    if(match > bestProb[0]) {
-      bestProb[0] = match;   
+
+  if (name.length >= 2) {
+    for (var i = 0; i < first.length; i++) {
+      var fname = name[1].trim().split(' ')
+      fname = fname[0]
+      match = natural.JaroWinklerDistance(fname, first[i].name)
+      if(match > bestProb) {
+        bestProb = match;   
+      }
+    }
+
+    if (bestProb < THRESHOLD) {
+      return {
+        name: p.can_nam,
+        probability: bestProb,
+        link: p.lin_ima
+      }
     }
   }
 
-
-  /*
+  bestProb = 0
   match = -1
+  
   if(name.length >= 2) {
    for (var i = 0; i < last.length; i++) {
       match = natural.JaroWinklerDistance(name[0], last[i].name)
-      if(match > bestProb[1]) {
-        bestProb[1] = match;   
+      if(match > bestProb) {
+        bestProb = match;   
       }
     }
   } else {
-    bestProb[1] = 1
+    bestProb = 1
   }
- */
-  
 
-  var bprob = bestProb[0] + bestProb[1]
-
-  if(bprob >= 0.87) return
-
-  res.push({
+  return {
     name: p.can_nam,
-    probability: bprob,
+    probability: bestProb,
     link: p.lin_ima
-  })
+  }
 })
 
-console.log(res)
+
+var funnyNames = weightedData.filter(function(el) {
+  return el.probability < THRESHOLD
+})
+
+console.log(JSON.stringify(funnyNames, null, '\t'))
